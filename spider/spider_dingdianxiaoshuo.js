@@ -29,11 +29,18 @@ function startRequest(url,callback) {
 		res.on('end',
 		function() {
 			var $ = cheerio.load(html,{decodeEntities:false}); //采用cheerio模块解析html
-			$('dd').filter(function(index, element){
-				$(this).text()
+			$('dd a').filter(function(index, element){
+				// var abc = "第1章 世界大变";
+				// var test = abc.match(/^[第]{1}\d+[章]{1}\s{1}(?:.*)/);
+				// console.log("test: "+test);
+				var match = $(this).text().trim().match(/^[第]{1}\d+[章]{1}\s{1}(?:.*)/);
+				console.log("text: "+$(this).text());
+				console.log("match: "+match);
+				return match!=null;
+				// return true;
 			}).each(function(index, element){
 				var title = $(this).text();
-				var link = $(this).attr('href');
+				var link = url+$(this).attr('href');
 				console.log("index: "+index, "title: "+title, "link: " + link);
 				resultArray.push({
 					index,
