@@ -32,7 +32,7 @@ function startRequest(url,callback) {
 		//监听end事件，如果整个网页内容的html都获取完毕，就执行回调函数
 		res.on('end',
 		function() {
-			html = iconv.decode(bufferHelper.toBuffer(),"gbk")
+			html = iconv.decode(bufferHelper.toBuffer(),"gbk");
 			var $ = cheerio.load(html,{decodeEntities:false}); //采用cheerio模块解析html
 			$('a.ulink').each(function(index, element){
 				var title = $(this).text();
