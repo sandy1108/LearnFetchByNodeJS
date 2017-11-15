@@ -12,6 +12,7 @@
     "bufferhelper": "^0.2.1",
     "cheerio": "^1.0.0-rc.2",
     "iconv-lite": "^0.4.18",
-    "request": "^2.81.0"
+    "request": "^2.81.0",
+    "xmlreader": "^0.2.3"
   }
 }
