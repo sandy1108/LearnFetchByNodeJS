@@ -8,26 +8,25 @@ var xmlreader = require("xmlreader");
 
 var PER_PAGE = 100;
 
-function fetchOnePluginInfo(url,callback) {
-    if(!url){
-        url = oriUrl;
+function fetchOnePluginInfo(urlPath,callback) {
+    if(!urlPath){
+        urlPath = oriUrl;
     }
-    //采用http模块向服务器发起一次get请求
+    //采用https模块向服务器发起一次get请求
     var option={
-        hostname:'m.baidu.com',
-        path:'/tcx?appui=alaxs&page=api/chapterList&gid=4315647048&pageNum=1&chapter_order=asc&site=&saveContent=1',
+        hostname:'raw.githubusercontent.com',
+        path:urlPath,
+        method:'GET',
+        rejectUnauthorized: false,
         headers:{
             'Accept':'*/*',
-            'Accept-Encoding':'utf-8',  //这里设置返回的编码方式 设置其他的会是乱码
+            'Accept-Encoding':'utf-8',
             'Accept-Language':'zh-CN,zh;q=0.8',
             'Connection':'keep-alive',
-            'Cookie':'BAIDUID=A78C39414751FF9349AAFB0FDA505058:FG=1; true; __bsi=12248088537049104479_00_7_N_R_33_0303_cca8_Y',
-            'Host':'m.baidu.com',
-            'Referer':'https://m.baidu.com/tcx?appui=alaxs&page=detail&gid=4305265392&from=dushu'
-
+            "User-Agent":"LearnFetchByNodeJS-NodeJSApp"
         }
     };
-    https.get(url,
+    https.get(option,
         function(res) {
             var bufferHelper = new BufferHelper();
             var xmlData = '';
@@ -41,17 +40,25 @@ function fetchOnePluginInfo(url,callback) {
             //监听end事件，如果整个网页内容的html都获取完毕，就执行回调函数
             res.on('end',
                 function() {
-                    xmlData = iconv.decode(bufferHelper.toBuffer(),"utf-8");
-                    xmlreader.read(xmlData, function(errors, result){
-                        if(null !== errors){
-                            console.log(errors)
-                            return;
+                    try{
+                        xmlData = iconv.decode(bufferHelper.toBuffer(),"utf-8");
+                        xmlreader.read(xmlData, function(errors, result){
+                            if(null !== errors){
+                                console.log(errors);
+                                console.log("error xmlData===>"+xmlData);
+                            }else{
+                                var pluginObject = parseAppCanPluginInfoXML(result);
+                                if(typeof(callback)!=undefined){
+                                    callback(pluginObject);
+                                }
+                            }
+                        });
+                    }catch(e){
+                        console.log("xmlreader===>read exception: "+e);
+                        if(typeof(callback)!=undefined){
+                            callback(undefined);
                         }
-                        var pluginObject = parseAppCanPluginInfoXML(result);
-                        if(typeof(callback)!='undefined'){
-                            callback(pluginObject);
-                        }
-                    });
+                    }
                 });
         }).on('error',
         function(err) {
@@ -74,16 +81,16 @@ function fetchPluginInfo(pluginNameArray, platformName, callback, index){
         index = 0;
     }
     var pluginName = pluginNameArray[index];
-    var fetchUrl;
+    var fetchUrlPath;
     if(platformName=="android"){
-        fetchUrl = "https://raw.githubusercontent.com/"
+        fetchUrlPath = "/"
             + platformName
             + "-plugin/"+pluginName+"/master/"
             + pluginName
             + "/info.xml";
     }else if(platformName=="ios"){
         var iosPluginName = "EUEx" + pluginName.substring(3);//EUEx+截取uex之后的部分
-        fetchUrl = "https://raw.githubusercontent.com/"
+        fetchUrlPath = "/"
             + platformName
             + "-plugin/"+pluginName+"/master/"
             + iosPluginName
@@ -91,14 +98,10 @@ function fetchPluginInfo(pluginNameArray, platformName, callback, index){
             + pluginName
             + "/info.xml";
     }
-    console.log("fetchPluginInfo===>URL is : " + fetchUrl);
-    fetchOnePluginInfo(fetchUrl, function(pluginInfo){
-       console.log("插件名："+pluginInfo.uexName
-           +" 插件版本："+pluginInfo.version
-           +" build号："+pluginInfo.build
-           +" 更新说明："+pluginInfo.info);
+    console.log("fetchPluginInfo===>URLPath is : " + fetchUrlPath);
+    fetchOnePluginInfo(fetchUrlPath, function(pluginObject){
        if(callback){
-           callback(pluginInfo, true);
+           callback(pluginObject, true);
            if (index < pluginNameArray.length-1){
                //还需要继续递归遍历插件名，继续获取下一个插件信息
                fetchPluginInfo(pluginNameArray, platformName, callback, index + 1);
@@ -115,17 +118,25 @@ function fetchAllPluginInfo(platformName){
     var pluginObjectArray = [];
     fetchPluginList(platformName, function(pluginName, isValid){
         if(isValid){
-            pluginNameArray.push(pluginName);
+            if(pluginName.indexOf("uex")==0){
+                //以uex开头，则认为是插件仓库，否则不是
+                pluginNameArray.push(pluginName);
+            }
         }else{
             //插件列表获取完成
             console.log("插件列表获取完成，共"+pluginNameArray.length+"个");
-            var index = 0;
-            fetchPluginInfo(pluginNameArray[index], platformName, function(pluginObject, isValid){
+            fetchPluginInfo(pluginNameArray, platformName, function(pluginObject, isValid){
                 if(isValid){
-                    pluginObjectArray.push(pluginObject);
+                    if(pluginObject!=undefined){
+                        console.log("插件名："+pluginObject.uexName
+                            +" 插件版本："+pluginObject.version
+                            +" build号："+pluginObject.build
+                            +" 更新说明："+pluginObject.info);
+                        pluginObjectArray.push(pluginObject);
+                    }
                 }else{
                     //获取完成
-                    console.log("获取插件信息完成！！！");
+                    console.log("获取插件信息完成，共处理了"+pluginObjectArray.length+"个插件信息");
                 }
             });
         }
@@ -133,11 +144,24 @@ function fetchAllPluginInfo(platformName){
 }
 
 function getPluginListURL(platformName,pageNum){
-    var pluginListURL = "https://api.github.com/orgs/"
+    var pluginListURLPath = "/orgs/"
         +platformName+"-plugin/repos?per_page="
         +PER_PAGE+"&page="
         +pageNum;
-    return pluginListURL;
+    var option={
+        hostname:'api.github.com',
+        path:pluginListURLPath,
+        method:'GET',
+        rejectUnauthorized: false,
+        headers:{
+            'Accept':'*/*',
+            'Accept-Encoding':'utf-8',
+            'Accept-Language':'zh-CN,zh;q=0.8',
+            'Connection':'keep-alive',
+            "User-Agent":"LearnFetchByNodeJS-NodeJSApp"
+        }
+    };
+    return option;
 }
 
 //外部调用只需要传入前两个参数
@@ -145,9 +169,8 @@ function fetchPluginList(platformName, callback, pageNum){
     if(!pageNum){
         pageNum = 1;
     }
-    var pluginListURL = getPluginListURL(platformName, pageNum);
-    https.setHeader("User-Agent","LearnFetchByNodeJS-NodeJSApp");
-    https.get(pluginListURL,
+    var pluginListURLOptions = getPluginListURL(platformName, pageNum);
+    https.get(pluginListURLOptions,
         function(res) {
             var bufferHelper = new BufferHelper();
             var resultData = '';
@@ -181,5 +204,5 @@ function fetchPluginList(platformName, callback, pageNum){
 
 module.exports.fetchAppCanGithubPluginInfo = fetchPluginInfo;
 
-// fetchPluginInfo("uexJPush", "ios");
+// fetchPluginInfo(["uexButton"], "android");
 fetchAllPluginInfo("android");
