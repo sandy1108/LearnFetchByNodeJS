@@ -5,7 +5,8 @@ var request = require('request');
 var iconv = require('iconv-lite'); 
 var BufferHelper = require('bufferhelper');
 
-var oriUrl = "http://www.dytt8.net/html/gndy/dyzz/index.html";
+var host = "http://www.dytt8.net";
+var oriUrl = "/html/gndy/dyzz/index.html";
 
 //主方法
 function fetchPage(url) { //封装了一层函数
@@ -14,7 +15,7 @@ function fetchPage(url) { //封装了一层函数
 
 function startRequest(url,callback) {
 	if(!url){
-		url = oriUrl;
+		url = host + oriUrl;
 	}
 	//采用http模块向服务器发起一次get请求      
 	http.get(url,
@@ -36,7 +37,7 @@ function startRequest(url,callback) {
 			var $ = cheerio.load(html,{decodeEntities:false}); //采用cheerio模块解析html
 			$('a.ulink').each(function(index, element){
 				var title = $(this).text();
-				var link = url + $(this).attr('href');
+				var link = host + $(this).attr('href');
 				console.log("index: "+index, "title: "+title, "link: " + link);
 				resultArray.push({
 					index,
@@ -55,7 +56,7 @@ function startRequest(url,callback) {
 		});
 	}).on('error',
 	function(err) {
-		console.log(err);
+		console.log("spider_dytt===>error: "+err);
 	});
 }
 
